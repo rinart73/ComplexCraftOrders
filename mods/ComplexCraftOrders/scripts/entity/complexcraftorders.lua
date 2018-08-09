@@ -291,7 +291,11 @@ function ComplexCraftOrders.restore(dataIn)
     if callingPlayer then return end
     settings = ComplexCraftOrders.fixRules(dataIn)
     log(Level.Debug, "restore: %s", table_export, settings)
-    if not settings.version then
+    if settings.version then
+        if settings.version == "0.1.0" then -- update
+            settings.version = config.version.string
+        end
+    else
         settings = { version = config.version.string }
     end
     rules = ComplexCraftOrders.processRawRules(settings)

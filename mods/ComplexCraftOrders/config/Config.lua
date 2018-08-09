@@ -4,7 +4,7 @@ config.author = "Rinart73"
 config.name = "Complex Craft Orders"
 config.homepage = ""
 config.version = {
-    major = 0, minor = 1, patch = 0, -- 0.17.1/0.18.0beta+
+    major = 0, minor = 1, patch = 1, -- 0.17.1/0.18.0beta+
 }
 config.version.string = config.version.major..'.'..config.version.minor..'.'..config.version.patch
 

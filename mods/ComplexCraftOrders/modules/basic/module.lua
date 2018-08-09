@@ -3,6 +3,9 @@ local randomseed = math.randomseed
 local huge = math.huge
 local match = string.match
 
+-- Temp Escort/Follow fix
+local isEscorting = true
+
 -- API
 local api
 
@@ -32,7 +35,7 @@ local AIAction =
 local function removeSpecialOrders()
     local entity = Entity()
     for index, name in pairs(entity:getScripts()) do
-        if string.match(name, "data/scripts/entity/ai/") then
+        if string.match(name, "/scripts/entity/ai/") then
             entity:removeScript(index)
         end
     end
@@ -385,7 +388,7 @@ end
 
 local function conditionAtCoordinates(target, arg)
     if not arg then return end
-    local x, y = match(tostring(arg), "(-?%d+),(-?%d+)")
+    local x, y = match(tostring(arg), "(-?%d+)[,;/ ](-?%d+)")
     local sx, sy = Sector():getCoordinates()
     return x == sx and y == sy
 end
@@ -405,72 +408,91 @@ local function actionPassive()
 end
 
 local function actionGuardPosition()
-    fakeCallingPlayer()
-    if CraftOrders.guardPosition then -- 0.18.2+
-        CraftOrders.guardPosition(Entity().translationf)
-    else -- 0.17.1+
-        CraftOrders.onGuardButtonPressed()
+    if CraftOrders.targetAction ~= AIAction.Guard then -- apply only if ship is not in the guard mode already
+        fakeCallingPlayer()
+        if CraftOrders.guardPosition then -- 0.18.2+
+            CraftOrders.guardPosition(Entity().translationf)
+        else -- 0.17.1+
+            CraftOrders.onGuardButtonPressed()
+        end
+        callingPlayer = nil
     end
-    callingPlayer = nil
 end
 
 local function actionEscortTarget(target)
     if not target then return end
-    fakeCallingPlayer()
-    CraftOrders.escortEntity(target.index)
-    callingPlayer = nil
+    -- apply only if ship is not escorting or escorting different target
+    if CraftOrders.targetAction ~= AIAction.Escort or not isEscorting or CraftOrders.targetIndex ~= target.index then
+        fakeCallingPlayer()
+        isEscorting = true -- temp fix to distinguish escort/follow
+        CraftOrders.escortEntity(target.index)
+        callingPlayer = nil
+    end
 end
 
 local function actionFollowTarget(target)
     if not target then return end
-    fakeCallingPlayer()
-    removeSpecialOrders()
-    ShipAI():setFollow(target)
-    CraftOrders.setAIAction(AIAction.Escort, target.index)
-    callingPlayer = nil
+    if CraftOrders.targetAction ~= AIAction.Escort or isEscorting or CraftOrders.targetIndex ~= target.index then
+        fakeCallingPlayer()
+        isEscorting = false -- temp fix to distinguish escort/follow
+        removeSpecialOrders()
+        ShipAI():setFollow(target)
+        CraftOrders.setAIAction(AIAction.Escort, target.index)
+        callingPlayer = nil
+    end
 end
 
 local function actionAttackTarget(target)
     if not target then return end
-    fakeCallingPlayer()
-    CraftOrders.attackEntity(target.index)
-    callingPlayer = nil
+    if CraftOrders.targetAction ~= AIAction.Attack or CraftOrders.targetIndex ~= target.index then
+        fakeCallingPlayer()
+        CraftOrders.attackEntity(target.index)
+        callingPlayer = nil
+    end
 end
 
 local function actionAggressive()
-    fakeCallingPlayer()
-    if CraftOrders.attackEnemies then -- 0.18.2+
-        CraftOrders.attackEnemies()
-    else -- 0.17.1+
-        CraftOrders.onAttackEnemiesButtonPressed()
+    if CraftOrders.targetAction ~= AIAction.Aggressive then
+        fakeCallingPlayer()
+        if CraftOrders.attackEnemies then -- 0.18.2+
+            CraftOrders.attackEnemies()
+        else -- 0.17.1+
+            CraftOrders.onAttackEnemiesButtonPressed()
+        end
+        callingPlayer = nil
     end
-    callingPlayer = nil
 end
 
 local function actionPatrol()
-    fakeCallingPlayer()
-    if CraftOrders.patrolSector then -- 0.18.2+
-        CraftOrders.patrolSector()
-    else -- 0.17.1+
-        CraftOrders.onPatrolButtonPressed()
+    if CraftOrders.targetAction ~= AIAction.Patrol then
+        fakeCallingPlayer()
+        if CraftOrders.patrolSector then -- 0.18.2+
+            CraftOrders.patrolSector()
+        else -- 0.17.1+
+            CraftOrders.onPatrolButtonPressed()
+        end
+        callingPlayer = nil
     end
-    callingPlayer = nil
 end
 
 local function actionMine()
-    fakeCallingPlayer()
-    if CraftOrders.mine then -- 0.18.2+
-        CraftOrders.mine()
-    else -- 0.17.1+
-        CraftOrders.onMineButtonPressed()
+    if CraftOrders.targetAction ~= AIAction.Mine then
+        fakeCallingPlayer()
+        if CraftOrders.mine then -- 0.18.2+
+            CraftOrders.mine()
+        else -- 0.17.1+
+            CraftOrders.onMineButtonPressed()
+        end
+        callingPlayer = nil
     end
-    callingPlayer = nil
 end
 
 local function actionSalvage()
-    fakeCallingPlayer()
-    CraftOrders.onSalvageButtonPressed()
-    callingPlayer = nil
+    if CraftOrders.targetAction ~= AIAction.Salvage then
+        fakeCallingPlayer()
+        CraftOrders.onSalvageButtonPressed()
+        callingPlayer = nil
+    end
 end
 
 local function actionTogglePassiveShooting(target, arg)
@@ -479,7 +501,7 @@ end
 
 local function actionJumpTo(target, arg)
     if not arg then return end
-    local x, y = match(tostring(arg), "(-?%d+),(-?%d+)")
+    local x, y = match(tostring(arg), "(-?%d+)[,;/ ](-?%d+)")
     if not x or not y then return end
     fakeCallingPlayer()
     removeSpecialOrders()
